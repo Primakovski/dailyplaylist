@@ -44,3 +44,4 @@ Thumbs.db
 # OTHER #
 ######################
 env/
+__pycache__/

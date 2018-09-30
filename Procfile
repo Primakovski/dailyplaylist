@@ -1,1 +1,1 @@
-web: gunicorn dailyplaylist:dailyplaylist
+web: gunicorn dailyplaylist:app
