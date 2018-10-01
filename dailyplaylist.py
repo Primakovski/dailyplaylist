@@ -1,16 +1,16 @@
 import os
 from urllib.parse import urlparse, parse_qs
 import re
+import json
 
-from flask import Flask, redirect
-
-from slackclient import SlackClient
+from flask import Flask, redirect, Response, request, jsonify
 
 app = Flask(__name__)
 
-SLACK_TOKEN = os.environ.get('SLACK_TOKEN')
-CHANNEL_ID = os.environ.get('CHANNEL_ID')
-NUMBER_OF_MESSAGES = 1000
+SLACK_WEBHOOK_TOKEN = os.environ.get('SLACK_WEBHOOK_TOKEN')
+
+DATA_FILENAME = "video_ids.json"
+OLDEST_FIRST = True
 
 
 def get_urls_from_text(text):
@@ -40,40 +40,54 @@ def get_youtube_video_id(url):
     return None
 
 
-@app.route('/')
-def redirect_to_playlist():
-    """
-    Redirect to playlist which is based on YouTube urls
-    which are aggregated from all messages in specific Slack channel.
-    """
-    sc = SlackClient(SLACK_TOKEN)
+def get_current_video_ids():
+    with open(DATA_FILENAME) as data_file:
+        video_ids = json.load(data_file)
+        return list(video_ids)
 
-    response = sc.api_call(
-      method="channels.history",
-      channel=CHANNEL_ID,
-      count=NUMBER_OF_MESSAGES
-    )
 
-    if response.get('ok'):
-        messages = response.get('messages', [])
+@app.route('/slack/webhook', methods=['POST'])
+def handle_slack_webhook():
+    if request.form.get('token') == SLACK_WEBHOOK_TOKEN:
+        text = request.form.get('text', '')
+        urls = get_urls_from_text(text)
 
-        urls = []
-        video_ids = []
-
-        for message in messages:
-            text = message.get('text', '')
-            urls_from_text = get_urls_from_text(text)
-            urls.extend(urls_from_text)
-
+        new_video_ids = []
         for url in urls:
             video_id = get_youtube_video_id(url)
             if video_id:
-                video_ids.append(video_id)
+                new_video_ids.append(video_id)
 
-        playlist_url = 'https://www.youtube.com/watch_videos?video_ids={}'.format(','.join(video_ids))
-        return redirect(playlist_url)
+        if new_video_ids:
+            current_video_ids = get_current_video_ids()
+            current_video_ids.extend(new_video_ids)
+            with open(DATA_FILENAME, 'w') as data_file:
+                json.dump(current_video_ids, data_file)
 
-    return response['error']
+    return Response(), 200
+
+
+@app.route('/current-video-ids', methods=['GET'])
+def current_video_ids():
+    return jsonify(get_current_video_ids())
+
+
+@app.route('/', methods=['GET'])
+def redirect_to_playlist():
+    """
+    Redirect to playlist which is based on YouTube urls
+    which are aggregated from a specific Slack channel.
+
+    [https://lifehacker.com/create-a-youtube-playlist-without-an-account-with-this-1688862486]
+    """
+    video_ids = get_current_video_ids()
+    if OLDEST_FIRST:
+        video_ids.reverse()
+
+    playlist_url = 'https://www.youtube.com/watch_videos?video_ids={}'.format(','.join(video_ids))
+
+    return redirect(playlist_url)
+
 
 if __name__ == '__main__':
     app.run()
