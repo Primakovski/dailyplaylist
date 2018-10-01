@@ -3,7 +3,7 @@ from urllib.parse import urlparse, parse_qs
 import re
 import json
 
-from flask import Flask, redirect, Response, request
+from flask import Flask, redirect, Response, request, jsonify
 
 app = Flask(__name__)
 
@@ -65,6 +65,11 @@ def handle_slack_webhook():
                 json.dump(current_video_ids, data_file)
 
     return Response(), 200
+
+
+@app.route('/current-video-ids', methods=['GET'])
+def current_video_ids():
+    return jsonify(get_current_video_ids())
 
 
 @app.route('/', methods=['GET'])
