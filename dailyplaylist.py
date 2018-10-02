@@ -41,9 +41,11 @@ def get_youtube_video_id(url):
 
 
 def get_current_video_ids():
-    with open(DATA_FILENAME) as data_file:
-        video_ids = json.load(data_file)
-        return list(video_ids)
+    video_ids = []
+    if os.path.exists(DATA_FILENAME):
+        with open(DATA_FILENAME) as data_file:
+            video_ids = list(json.load(data_file))
+    return video_ids
 
 
 @app.route('/slack/webhook', methods=['POST'])
@@ -61,7 +63,7 @@ def handle_slack_webhook():
         if new_video_ids:
             current_video_ids = get_current_video_ids()
             current_video_ids.extend(new_video_ids)
-            with open(DATA_FILENAME, 'w') as data_file:
+            with open(DATA_FILENAME, 'w+') as data_file:
                 json.dump(current_video_ids, data_file)
 
     return Response(), 200

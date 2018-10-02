@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
         video_ids.reverse()
 
-        with open(DATA_FILENAME, 'w') as data_file:
+        with open(DATA_FILENAME, 'w+') as data_file:
             json.dump(video_ids, data_file)
 
     else:
