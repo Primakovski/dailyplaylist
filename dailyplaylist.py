@@ -11,6 +11,7 @@ app = Flask(__name__)
 SLACK_TOKEN = os.environ.get('SLACK_TOKEN')
 CHANNEL_ID = os.environ.get('CHANNEL_ID')
 NUMBER_OF_MESSAGES = 1000
+YOUTUBE_VIDEO_ID_LEN = 11
 
 
 def get_urls_from_text(text):
@@ -36,8 +37,14 @@ def get_youtube_video_id(url):
             return query.path.split('/')[2]
         if query.path[:3] == '/v/':
             return query.path.split('/')[2]
-    # fail?
     return None
+
+
+# TODO extend video id validation with regex
+def is_video_id_valid(video_id):
+    if len(video_id) != YOUTUBE_VIDEO_ID_LEN:
+        return False
+    return True
 
 
 @app.route('/')
@@ -67,7 +74,7 @@ def redirect_to_playlist():
 
         for url in urls:
             video_id = get_youtube_video_id(url)
-            if video_id:
+            if video_id and is_video_id_valid(video_id):
                 video_ids.append(video_id)
 
         playlist_url = 'https://www.youtube.com/watch_videos?video_ids={}'.format(','.join(video_ids))
